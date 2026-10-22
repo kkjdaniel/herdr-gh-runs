@@ -306,8 +306,7 @@ def refresh(st):
             st.fetched_key = st.key()
 
         active = sum(1 for _, r in runs if is_active(r))
-        where = st.target[0].split("/")[-1] if st.scope == "repo" and st.target else "all repos"
-        tag_pane(st, f"CI {where}" + (f" · {active} running" if active else ""))
+        tag_pane(st, "GH Actions" + (f" · {active} running" if active else ""))
     except (CmdError, ValueError, KeyError) as e:
         with st.lock:
             st.error = str(e)
@@ -459,6 +458,7 @@ def fit(text, width):
 class Colors:
     def __init__(self):
         self.pairs = {}
+        self.sel_pairs = {}
         self.bg = -1
         if not curses.has_colors():
             return
@@ -476,9 +476,28 @@ class Colors:
         for i, (name, fg) in enumerate(spec.items(), start=1):
             curses.init_pair(i, fg, bg)
             self.pairs[name] = curses.color_pair(i)
+        # Selected rows: a dark grey bar with light text and bright status
+        # colours, instead of reverse video (which put grey text on grey).
+        if curses.COLORS >= 256:
+            sel_bg = 237
+            sel = {"text": 255, "dim": 250, "green": 10, "red": 9, "yellow": 11,
+                   "magenta": 13, "cyan": 14}
+        else:
+            sel_bg = curses.COLOR_BLUE
+            sel = {"text": curses.COLOR_WHITE, "dim": curses.COLOR_WHITE,
+                   "green": curses.COLOR_GREEN, "red": curses.COLOR_RED,
+                   "yellow": curses.COLOR_YELLOW, "magenta": curses.COLOR_MAGENTA,
+                   "cyan": curses.COLOR_CYAN}
+        for i, (name, fg) in enumerate(sel.items(), start=7):
+            curses.init_pair(i, fg, sel_bg)
+            self.sel_pairs[name] = curses.color_pair(i)
 
     def __call__(self, name):
         return self.pairs.get(name, curses.A_DIM if name == "dim" else 0)
+
+    def selected(self, name="text"):
+        """Attribute for text on a selected row."""
+        return self.sel_pairs.get(name, self.sel_pairs.get("text", curses.A_REVERSE))
 
 
 def put(scr, y, x, text, attr=0):
@@ -520,7 +539,7 @@ def draw_header(scr, st, col, w, loading, fetched):
     left = f" {where}" if narrow else f" CI · {st.login or '…'} · {where}"
     flags = ["mine" if st.mine else "all"]
     if st.pinned and st.scope == "repo":
-        flags.append("pinned")
+        flags.append("pin" if narrow else "pinned")
     if loading or not fetched:
         flags.append("updating")
     else:
@@ -588,36 +607,37 @@ def draw(scr, st, col, offset):
     for row, (repo, r) in enumerate(runs[offset: offset + body_h]):
         y = body_top + row
         is_sel = r["id"] == st.selected_id
-        base = curses.A_REVERSE if is_sel else 0
+        c = col.selected if is_sel else col
+        text_attr = c("text") if is_sel else 0
         if is_sel:
-            put(scr, y, 0, " " * w, base)
+            put(scr, y, 0, " " * w, text_attr)
         glyph, color = status_glyph(r)
-        put(scr, y, 0, f"{glyph} ", col(color) | base | curses.A_BOLD)
+        put(scr, y, 0, f"{glyph} ", c(color) | curses.A_BOLD)
         x = 2
         for key, width in cells:
             if key == "text":
                 parts = []
                 if st.scope == "global":
-                    parts.append((repo.split("/")[-1] + " ", col("dim")))
+                    parts.append((repo.split("/")[-1] + " ", c("dim")))
                 if title_count.get(r.get("display_title"), 0) > 1:
-                    parts.append(((r.get("name") or "") + " · ", curses.A_BOLD))
-                parts.append((r.get("display_title") or "", 0))
+                    parts.append(((r.get("name") or "") + " · ", text_attr | curses.A_BOLD))
+                parts.append((r.get("display_title") or "", text_attr))
                 used = 0
                 for text, attr in parts:
                     chunk = fit(text, width - used).rstrip() if used + len(text) > width else text
-                    put(scr, y, x + used, chunk, attr | base)
+                    put(scr, y, x + used, chunk, attr)
                     used += len(chunk)
                     if used >= width:
                         break
             else:
                 text = {"repo": repo.split("/")[-1], "wf": r.get("name"),
                         "branch": r.get("head_branch"), "title": r.get("display_title")}[key]
-                attr = {"repo": col("dim"), "wf": curses.A_BOLD, "branch": col("magenta")}.get(key, 0)
-                put(scr, y, x, fit(text, width), attr | base)
+                attr = {"repo": c("dim"), "wf": text_attr | curses.A_BOLD,
+                        "branch": c("magenta")}.get(key, text_attr)
+                put(scr, y, x, fit(text, width), attr)
             x += width + 1
         # How long the run took, or has taken so far while it's still going.
-        put(scr, y, w - 7, run_duration(r).rjust(6),
-            col(color if is_active(r) else "dim") | base)
+        put(scr, y, w - 7, run_duration(r).rjust(6), c(color if is_active(r) else "dim"))
 
     if st.confirm:
         put(scr, h - 1, 0, fit(" " + st.confirm[0], w), col("yellow") | curses.A_BOLD)

@@ -289,8 +289,13 @@ class Viewer:
 
         def go():
             try:
-                raw = run(["gh", "api", "--allow-escape-sequences",
-                           f"repos/{self.repo}/actions/jobs/{jid}/logs"], timeout=90)
+                path = f"repos/{self.repo}/actions/jobs/{jid}/logs"
+                try:
+                    raw = run(["gh", "api", "--allow-escape-sequences", path], timeout=90)
+                except CmdError as e:
+                    if "unknown flag" not in str(e):
+                        raise
+                    raw = run(["gh", "api", path], timeout=90)  # older gh
                 result = parse_job_log(raw)
             except CmdError as e:
                 result = ("No log yet: GitHub publishes a job's log when the job finishes."
@@ -466,18 +471,18 @@ def draw_tree(scr, v, col, x0, y0, width, height):
         dur = span(node) if node.get("conclusion") != "skipped" else ""
         name_w = max(0, width - len(indent) - 2 - len(dur) - 2)
         selected = i == v.sel
-        if selected and v.focus == "tree":
-            base = curses.A_REVERSE
-        elif selected:
-            base = curses.A_BOLD | curses.A_UNDERLINE
-        else:
-            base = 0
-        name_attr = curses.A_BOLD if it[0] == "job" else (col("dim") if dur == "" else 0)
+        # Selected row gets the selection bar while the list has focus, and
+        # stays bold + underlined while you're reading its log.
+        bar = selected and v.focus == "tree"
+        c = col.selected if bar else col
+        text = c("text") if bar else 0
+        extra = curses.A_BOLD | curses.A_UNDERLINE if selected and not bar else 0
+        name_attr = (text | curses.A_BOLD) if it[0] == "job" else (c("dim") if dur == "" else text)
         y = y0 + row
-        put(scr, y, x0, " " * width, base)
-        put(scr, y, x0, indent + glyph + " ", col(color) | base | curses.A_BOLD)
-        put(scr, y, x0 + len(indent) + 2, fit(node.get("name"), name_w), name_attr | base)
-        put(scr, y, x0 + width - len(dur) - 1, dur, col("dim") | base)
+        put(scr, y, x0, " " * width, text)
+        put(scr, y, x0, indent + glyph + " ", c(color) | curses.A_BOLD)
+        put(scr, y, x0 + len(indent) + 2, fit(node.get("name"), name_w), name_attr | extra)
+        put(scr, y, x0 + width - len(dur) - 1, dur, c("dim"))
 
 
 def draw_log(scr, v, pal, col, x0, y0, width, height):

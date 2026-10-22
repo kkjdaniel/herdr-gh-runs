@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" role="img" aria-label="gh-runs logo">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c2330"/>
+      <stop offset="1" stop-color="#0d1117"/>
+    </linearGradient>
+  </defs>
+  <!-- Tile: a small terminal pane -->
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="url(#tile)"/>
+  <rect x="4.75" y="4.75" width="118.5" height="118.5" rx="25.25" fill="none" stroke="#30394a" stroke-width="1.5"/>
+
+  <!-- Pane header: repo name, divider -->
+  <rect x="22" y="24" width="34" height="7" rx="3.5" fill="#39c5cf"/>
+  <rect x="88" y="24" width="18" height="7" rx="3.5" fill="#4b5563"/>
+  <line x1="22" y1="40" x2="106" y2="40" stroke="#2a3342" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Run 1: passed -->
+  <circle cx="29" cy="56" r="7" fill="#3fb950"/>
+  <path d="M25.6 56.2l2.4 2.4 4.6-4.8" fill="none" stroke="#0d1117" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="42" y="52" width="64" height="8" rx="4" fill="#c9d1d9"/>
+
+  <!-- Run 2: running, selected -->
+  <rect x="15" y="68" width="98" height="20" rx="7" fill="#2b3343"/>
+  <circle cx="29" cy="78" r="6" fill="none" stroke="#e3b341" stroke-width="2.6" stroke-dasharray="26 12" stroke-linecap="round" transform="rotate(-40 29 78)"/>
+  <rect x="42" y="74" width="50" height="8" rx="4" fill="#f0f6fc"/>
+  <rect x="96" y="74" width="10" height="8" rx="4" fill="#e3b341"/>
+
+  <!-- Run 3: failed -->
+  <circle cx="29" cy="100" r="7" fill="#f85149"/>
+  <path d="M26.2 97.2l5.6 5.6M31.8 97.2l-5.6 5.6" stroke="#0d1117" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="42" y="96" width="40" height="8" rx="4" fill="#8b949e"/>
+</svg>

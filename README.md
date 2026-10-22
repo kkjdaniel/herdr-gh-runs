@@ -1,106 +1,167 @@
-# gh-runs
+<p align="center">
+  <img src="assets/banner.svg" alt="gh-runs: GitHub Actions in a herdr pane" width="100%">
+</p>
 
-A herdr plugin that shows GitHub Actions runs for the account you're logged in
-to with `gh` (`gh auth status`, active account).
+<p align="center">
+  A <a href="https://herdr.dev">herdr</a> plugin that keeps your GitHub Actions runs in a small pane beside your work,<br>
+  and opens their logs in a viewer built for the terminal.
+</p>
 
-By default it shows your runs in the repo of the pane you have focused in the
-workspace, and follows you as you move between panes. Remotes using SSH host
-aliases (`git@github-work:org/repo.git`) are handled.
+<p align="center">
+  <code>herdr plugin install kkjdaniel/herdr-gh-runs</code>
+</p>
 
-When one of your runs finishes, herdr shows a notification.
+---
+
+<img src="assets/pane.svg" alt="The gh-runs pane listing workflow runs" align="right" width="300">
+
+## What it does
+
+- **Shows the runs you triggered**, using the account you're logged in to with `gh`.
+- **Follows the repo you're working in.** It reads the repo from whichever pane you
+  have focused, including remotes that use SSH host aliases like `git@github-work:org/repo.git`.
+- **Live status.** Running runs show a spinner and a ticking timer; finished runs show
+  how long they took.
+- **Docks under [herdr-sidebar](https://github.com/alexarthurs/herdr-sidebar)** as a
+  small pane when you use it, and keeps your focus where it is.
+- **Notifies you** through herdr when one of your runs finishes.
+- **Watch, rerun or cancel** runs, or open them on GitHub.
+- **Log viewer** with jobs and steps, clean logs, error jumping, search and copy.
+
+<br clear="right">
+
+## Log viewer
+
+<p align="center">
+  <img src="assets/log-viewer.svg" alt="The log viewer showing a failed step and its error" width="100%">
+</p>
+
+Press `l` (or `Enter` on a finished run) to open it in a herdr popup.
+
+- Jobs and steps on the left with their status and duration; the selected step's log on the right.
+- Runner timestamps stripped, colours rendered, `##[group]` sections shown as headings and error lines marked in red.
+- Failed runs open on the failed step, scrolled to the end where the error usually is.
+- Drag to select text (it's copied when you let go), or press `Y` to copy the whole step's log, ready to paste into an agent.
 
 ## Requirements
 
-- `gh`, logged in
-- `python3` (standard library only)
+- [herdr](https://herdr.dev) 0.9 or newer
+- [GitHub CLI](https://cli.github.com) (`gh`), logged in with `gh auth login`
+- Python 3.8 or newer (standard library only)
+- macOS or Linux
 
 ## Install
 
 ```bash
-herdr plugin link /path/to/herdr-gh-runs
+herdr plugin install kkjdaniel/herdr-gh-runs
 ```
 
-Open it with the toggle action. If the tab has a
-[herdr-sidebar](https://github.com/alexarthurs/herdr-sidebar) pane, it opens as
-a small pane (14 rows) docked under it and leaves your focus where it is;
-otherwise it opens beside the focused pane. Pressing the toggle again focuses
-the pane, and once more (while focused) closes it.
-
-```bash
-herdr plugin action invoke kkjdaniel.gh-runs.toggle
-```
-
-or bind a key in `~/.config/herdr/config.toml`:
+Then bind a key to open it. Add this to `~/.config/herdr/config.toml`:
 
 ```toml
 [[keys.command]]
 key = "prefix+g"
 type = "plugin_action"
 command = "kkjdaniel.gh-runs.toggle"
-description = "CI runs"
+description = "GH Actions"
 ```
+
+and reload with `herdr server reload-config`. You can also run the action directly:
+
+```bash
+herdr plugin action invoke kkjdaniel.gh-runs.toggle
+```
+
+The toggle opens the pane (under herdr-sidebar if the tab has one, otherwise beside the
+focused pane), focuses it if it's already open, and closes it if it's focused.
+
+To update later: `herdr plugin update kkjdaniel.gh-runs`.
 
 ## Keys
 
-| Key | Does |
+### Runs pane
+
+| Key | Action |
 | --- | --- |
-| `↑` `↓` / `j` `k`, `g` `G`, PgUp/PgDn | move |
-| `Enter` | watch a running run (`gh run watch`), or open a finished one in the log viewer |
-| `l` | log viewer, opened on the failed step's log |
-| `o` | open in browser |
-| `R` | rerun (failed jobs only if it failed), asks first |
+| `↑` `↓` / `j` `k` | move |
+| `Enter` | watch a running run, or open a finished one in the log viewer |
+| `l` | log viewer, opened on the failed step |
+| `o` | open the run on GitHub |
+| `R` | rerun (only the failed jobs if it failed), asks first |
 | `x` | cancel a running run, asks first |
 | `a` | your runs / everyone's runs |
 | `s` | this repo / all your recently active repos |
-| `p` | pin the current repo (stop following focus) |
+| `p` | pin the current repo instead of following focus |
 | `r` | refresh now |
 | `?` | key list |
 | `q` | quit |
 
-Popups close with `q`, or any key once a watched run finishes.
+The header shows the repo, the filter (`mine` or `all`) and how long ago the list was refreshed.
 
-## Log viewer
+### Log viewer
 
-Opens in a popup. Jobs and steps are listed on the left with their status and
-duration; the selected step's log is on the right with the runner's timestamps
-stripped, colours rendered, `##[group]` sections shown as `▸` headings and
-error lines marked in red. A failed run opens on its first failed step,
-scrolled to the end where the error usually is. Below 90 columns it shows one
-side at a time.
-
-| Key | Does |
+| Key | Action |
 | --- | --- |
-| `j` `k` | select a step (left) or scroll (right) |
+| `j` `k` | select a step (left), scroll (right) |
 | `Enter` / `→` / `Tab` | move to the log; `←` / `Esc` / `Tab` go back |
-| `e` | next failed step (left), next error line (right); `E` previous |
-| `space` `b`, `^d` `^u`, `g` `G` | page, half page, top/bottom of the log |
-| `/` `n` `N` | search the selected step's log |
-| drag | select log text; it's copied when you let go |
+| `e` / `E` | next failed step (left); next / previous error line (right) |
+| `space` `b`, `^d` `^u`, `g` `G` | page, half page, top / bottom |
+| `/` `n` `N` | search the selected step |
+| `J` `K` | next / previous step without leaving the log |
+| drag | select text; copied when you let go |
 | `v` then `j` `k`, `y` | select whole lines from the keyboard, then copy |
-| `y` / `Y` | copy the selection / copy the whole step's log |
+| `Y` | copy the whole step's log |
 | click, wheel | pick a step, scroll |
-| `J` `K` | next/previous step without leaving the log |
 | `o` | open the selected job on GitHub |
 | `r` | reload |
 | `q` | close |
 
-Copies are plain text: no colour codes and none of the viewer's own markers
-(`▸`, `✗`, `$`). They go through `pbcopy` (or `wl-copy`/`xclip`/`xsel`), falling
-back to the terminal clipboard (OSC 52).
+Selecting a job row shows that job's whole log. GitHub only publishes a job's log once
+the job finishes; until then, `Enter` on the run opens the live `gh run watch` view.
 
-Selecting a job row shows that job's whole log. Logs for jobs still running
-aren't published by GitHub until the job finishes.
+## How it works
 
-The time on each row is how long the run took, or has taken so far while it's
-still going. In narrow panes each row shows the status, the commit title (plus
-the workflow name when several runs share a title) and that time.
+Everything goes through `gh`, so it uses whichever account `gh auth status` shows as
+active. To see a repo that only another of your accounts can access, switch with
+`gh auth switch`.
 
-## Notes
+- **This repo:** the runs for the focused pane's repo, filtered to you with the `actor`
+  query parameter. Refreshes every 10s while a run is active and every 30s otherwise.
+- **All repos (`s`):** up to 12 repos you've recently pushed to or opened pull requests on,
+  refreshed every 30s or 90s. Both modes stay well inside GitHub's API rate limit.
+- **Log viewer:** fetches each job's log from the Actions API and splits it into steps
+  using the step headers and start times.
+- Copies use `pbcopy`, `wl-copy`, `xclip` or `xsel`, falling back to the terminal
+  clipboard (OSC 52).
 
-- Refreshes every 10s while a run is active, 30s otherwise. "All repos" mode
-  checks up to 12 repos you've recently pushed to or opened PRs on, every
-  30s/90s, to stay well inside the API rate limit.
-- The docked height is `DOCK_ROWS` in `gh_runs.py` (or `GH_RUNS_ROWS` in the
-  herdr server's environment).
-- Set `GH_RUNS_REPO=owner/name` in the pane's env to start pinned to a repo.
-- If the pane crashes, the traceback is in the plugin state dir as `crash.log`.
+## Configuration
+
+These are environment variables read by herdr's server process:
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `GH_RUNS_ROWS` | `14` | height of the pane when docked under herdr-sidebar |
+| `GH_RUNS_REPO` | | start pinned to `owner/name` instead of following focus |
+
+## Troubleshooting
+
+- **The pane or popup closes suddenly.** The traceback is saved to `crash.log` in the
+  plugin's state directory (`~/.local/state/herdr/plugins/kkjdaniel.gh-runs/` by default).
+  Please include it in an issue.
+- **"Not found" errors for a repo.** The active `gh` account can't see it; check
+  `gh auth status`.
+- **Action logs:** `herdr plugin log list --plugin kkjdaniel.gh-runs`.
+
+## Development
+
+```bash
+git clone https://github.com/kkjdaniel/herdr-gh-runs
+herdr plugin link "$PWD/herdr-gh-runs"
+```
+
+A linked plugin runs straight from your checkout. Close and reopen the pane to pick up
+changes; the log viewer reloads with every popup.
+
+## License
+
+[MIT](LICENSE)

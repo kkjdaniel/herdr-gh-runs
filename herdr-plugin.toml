@@ -7,7 +7,7 @@ description = "GitHub Actions runs for the account logged in via gh, following t
 
 [[panes]]
 id = "runs"
-title = "CI runs"
+title = "GH Actions"
 placement = "split"
 # Run by absolute path: a pane opened with --cwd starts in that directory.
 command = ["/bin/sh", "-c", "exec python3 \"$HERDR_PLUGIN_ROOT/gh_runs.py\""]
@@ -15,7 +15,7 @@ command = ["/bin/sh", "-c", "exec python3 \"$HERDR_PLUGIN_ROOT/gh_runs.py\""]
 # Run details/logs open here; the command comes in via GH_RUNS_CMD.
 [[panes]]
 id = "detail"
-title = "CI run"
+title = "GH Actions run"
 placement = "popup"
 width = "90%"
 height = "85%"
@@ -23,6 +23,6 @@ command = ["/bin/bash", "-c", "exec /bin/bash -c \"$GH_RUNS_CMD\""]
 
 [[actions]]
 id = "toggle"
-title = "gh-runs: toggle CI runs pane"
+title = "gh-runs: toggle GH Actions pane"
 contexts = ["global", "workspace", "pane"]
 command = ["python3", "gh_runs.py", "--toggle"]
