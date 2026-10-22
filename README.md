@@ -13,20 +13,16 @@
 
 ---
 
-<img src="assets/pane.svg" alt="The gh-runs pane listing workflow runs" align="right" width="300">
+<img src="assets/pane.svg" alt="The gh-runs pane listing workflow runs" align="right" width="320">
 
 ## What it does
 
-- **Shows the runs you triggered**, using the account you're logged in to with `gh`.
-- **Follows the repo you're working in.** It reads the repo from whichever pane you
-  have focused, including remotes that use SSH host aliases like `git@github-work:org/repo.git`.
-- **Live status.** Running runs show a spinner and a ticking timer; finished runs show
-  how long they took.
-- **Docks under [herdr-sidebar](https://github.com/alexarthurs/herdr-sidebar)** as a
-  small pane when you use it, and keeps your focus where it is.
-- **Notifies you** through herdr when one of your runs finishes.
-- **Watch, rerun or cancel** runs, or open them on GitHub.
-- **Log viewer** with jobs and steps, clean logs, error jumping, search and copy.
+- Lists the runs you triggered, using your `gh` login
+- Follows the repo of the pane you're working in
+- Shows live progress and how long each run took
+- Docks under [herdr-sidebar](https://github.com/alexarthurs/herdr-sidebar) if you use it
+- Notifies you when one of your runs finishes
+- Lets you watch, rerun or cancel a run, or open it on GitHub
 
 <br clear="right">
 
@@ -38,10 +34,10 @@
 
 Press `l` (or `Enter` on a finished run) to open it in a herdr popup.
 
-- Jobs and steps on the left with their status and duration; the selected step's log on the right.
-- Runner timestamps stripped, colours rendered, `##[group]` sections shown as headings and error lines marked in red.
-- Failed runs open on the failed step, scrolled to the end where the error usually is.
-- Drag to select text (it's copied when you let go), or press `Y` to copy the whole step's log, ready to paste into an agent.
+- Jobs and steps on the left, the selected step's log on the right
+- Runner timestamps stripped, colours kept and errors marked in red
+- Opens on the failed step, scrolled to the error
+- Drag to copy text, or press `Y` to copy a whole step's log
 
 ## Requirements
 
@@ -125,14 +121,15 @@ Everything goes through `gh`, so it uses whichever account `gh auth status` show
 active. To see a repo that only another of your accounts can access, switch with
 `gh auth switch`.
 
-- **This repo:** the runs for the focused pane's repo, filtered to you with the `actor`
-  query parameter. Refreshes every 10s while a run is active and every 30s otherwise.
-- **All repos (`s`):** up to 12 repos you've recently pushed to or opened pull requests on,
-  refreshed every 30s or 90s. Both modes stay well inside GitHub's API rate limit.
-- **Log viewer:** fetches each job's log from the Actions API and splits it into steps
-  using the step headers and start times.
-- Copies use `pbcopy`, `wl-copy`, `xclip` or `xsel`, falling back to the terminal
-  clipboard (OSC 52).
+The repo comes from the focused pane's git remote, so SSH host aliases like
+`git@github-work:org/repo.git` work too. Runs are filtered to you with the API's `actor`
+parameter and refresh every 10s while one is active, every 30s otherwise. In all-repos
+mode (`s`) it checks up to 12 repos you've recently pushed to or opened pull requests on,
+every 30s or 90s, which keeps well inside GitHub's rate limit.
+
+The log viewer fetches each job's log from the Actions API and splits it into steps using
+the step headers and start times. Copying uses `pbcopy`, `wl-copy`, `xclip` or `xsel`,
+falling back to the terminal clipboard (OSC 52).
 
 ## Configuration
 
@@ -145,12 +142,13 @@ These are environment variables read by herdr's server process:
 
 ## Troubleshooting
 
-- **The pane or popup closes suddenly.** The traceback is saved to `crash.log` in the
-  plugin's state directory (`~/.local/state/herdr/plugins/kkjdaniel.gh-runs/` by default).
-  Please include it in an issue.
-- **"Not found" errors for a repo.** The active `gh` account can't see it; check
-  `gh auth status`.
-- **Action logs:** `herdr plugin log list --plugin kkjdaniel.gh-runs`.
+If the pane or popup closes suddenly, the traceback is saved to `crash.log` in the
+plugin's state directory (`~/.local/state/herdr/plugins/kkjdaniel.gh-runs/` by default).
+Please include it if you open an issue.
+
+A "not found" error for a repo means the active `gh` account can't see it; check
+`gh auth status`. Logs from the toggle action are available with
+`herdr plugin log list --plugin kkjdaniel.gh-runs`.
 
 ## Development
 

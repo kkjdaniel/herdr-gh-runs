@@ -23,15 +23,15 @@
   <!-- Faint run list on the right, like the pane -->
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" opacity="0.6">
     <g transform="translate(846 78)">
-      <text x="0" y="0" fill="#39c5cf" font-weight="700">bgg-mcp</text>
+      <text x="0" y="0" fill="#39c5cf" font-weight="700">storefront</text>
       <text x="390" y="0" fill="#6e7681" text-anchor="end">mine · 4s ago</text>
       <line x1="0" y1="14" x2="390" y2="14" stroke="#2a3342" stroke-width="2"/>
-      <text x="0" y="48" fill="#3fb950">✓</text><text x="26" y="48" fill="#c9d1d9">chore: bump version to 1.9.2</text><text x="390" y="48" fill="#6e7681" text-anchor="end">5m27s</text>
-      <rect x="-8" y="64" width="406" height="30" rx="6" fill="#2b3343"/>
-      <text x="0" y="85" fill="#e3b341">◐</text><text x="26" y="85" fill="#f0f6fc">feat: rules tool out of beta</text><text x="390" y="85" fill="#e3b341" text-anchor="end">1m04s</text>
-      <text x="0" y="122" fill="#f85149">✗</text><text x="26" y="122" fill="#c9d1d9">Publish to MCP Registry</text><text x="390" y="122" fill="#6e7681" text-anchor="end">2m11s</text>
-      <text x="0" y="159" fill="#3fb950">✓</text><text x="26" y="159" fill="#c9d1d9">chore: bump version to 1.9.1</text><text x="390" y="159" fill="#6e7681" text-anchor="end">9m21s</text>
-      <text x="0" y="196" fill="#3fb950">✓</text><text x="26" y="196" fill="#c9d1d9">Graph Update: go_modules</text><text x="390" y="196" fill="#6e7681" text-anchor="end">40s</text>
+      <rect x="-8" y="27" width="406" height="30" rx="6" fill="#2b3343"/>
+      <text x="0" y="48" fill="#e3b341">◐</text><text x="26" y="48" fill="#f0f6fc">Add retry to webhooks</text><text x="390" y="48" fill="#e3b341" text-anchor="end">1m19s</text>
+      <text x="0" y="85" fill="#f85149">✗</text><text x="26" y="85" fill="#c9d1d9">Fix rounding in totals</text><text x="390" y="85" fill="#6e7681" text-anchor="end">2m34s</text>
+      <text x="0" y="122" fill="#3fb950">✓</text><text x="26" y="122" fill="#c9d1d9">Cache pnpm store in CI</text><text x="390" y="122" fill="#6e7681" text-anchor="end">2m11s</text>
+      <text x="0" y="159" fill="#3fb950">✓</text><text x="26" y="159" fill="#c9d1d9">Bump vite to 5.4.10</text><text x="390" y="159" fill="#6e7681" text-anchor="end">2m08s</text>
+      <text x="0" y="196" fill="#3fb950">✓</text><text x="26" y="196" fill="#c9d1d9">Release v2.3.0</text><text x="390" y="196" fill="#6e7681" text-anchor="end">5m05s</text>
     </g>
   </g>
   <rect width="1280" height="360" rx="24" fill="url(#fade)"/>

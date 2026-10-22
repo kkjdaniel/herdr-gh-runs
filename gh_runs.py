@@ -512,7 +512,7 @@ def put(scr, y, x, text, attr=0):
 
 HINTS = ("↑↓ move  ⏎ watch/view  l logs  o browser  R rerun  x cancel  "
          "a mine/everyone  s repo/all repos  p pin  r refresh  ? keys  q quit")
-SHORT_HINTS = "⏎ view  l logs  o web  ? keys"
+SHORT_HINTS = "⏎ view  l logs  ? keys"
 HELP = [
     ("↑↓ j k", "move"),
     ("⏎", "watch / view run"),
