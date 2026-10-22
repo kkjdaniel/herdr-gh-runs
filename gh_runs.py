@@ -747,8 +747,16 @@ def toggle():
     if ours:
         p = ours[0]
         verb = "close" if p["pane_id"] == focused_id else "focus"
-        run([HERDR, "plugin", "pane", verb, p["pane_id"]])
-        return
+        try:
+            run([HERDR, "plugin", "pane", verb, p["pane_id"]])
+            return
+        except CmdError:
+            # After a plugin update/relink herdr no longer counts an already
+            # open pane as ours. Close it as a plain pane; if the user wanted
+            # it focused, open a fresh one (running the updated code) below.
+            run([HERDR, "pane", "close", p["pane_id"]])
+            if verb == "close":
+                return
     sidebar = find_sidebar([p for p in panes if not tab or p.get("tab_id") == tab])
     if sidebar:
         # Small pane docked under herdr-sidebar; leave focus where it is.
