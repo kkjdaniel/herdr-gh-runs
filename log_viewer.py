@@ -6,7 +6,6 @@ runner's timestamps stripped, ANSI colours rendered and ##[error] lines marked.
 
 import base64
 import curses
-import os
 import shutil
 import re
 import subprocess

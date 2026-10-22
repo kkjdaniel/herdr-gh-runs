@@ -340,13 +340,32 @@ def refresh(st):
             st.loading = False
 
 
+def log_crash():
+    """Append the current traceback to crash.log in the plugin's state dir."""
+    import traceback
+    state = os.environ.get("HERDR_PLUGIN_STATE_DIR") or PLUGIN_ROOT
+    try:
+        with open(os.path.join(state, "crash.log"), "a") as f:
+            f.write(f"--- {datetime.now().isoformat()}\n{traceback.format_exc()}")
+    except OSError:
+        pass
+
+
 def worker(st):
     while not st.quit:
-        if st.scope == "repo" and not st.pinned:
-            st.target = pick_target(st.target, my_pane(st))
-        stale = time.time() - st.fetched_at >= st.interval()
-        if st.key() != st.fetched_key or stale:
-            refresh(st)
+        try:
+            if st.scope == "repo" and not st.pinned:
+                st.target = pick_target(st.target, my_pane(st))
+            stale = time.time() - st.fetched_at >= st.interval()
+            if st.key() != st.fetched_key or stale:
+                refresh(st)
+        except Exception:
+            # Keep the pane alive (and say so) rather than freezing on "updating".
+            log_crash()
+            with st.lock:
+                st.error = "unexpected error, details in crash.log"
+                st.loading = False
+                st.fetched_at = time.time()
         st.wake.wait(TICK)
         st.wake.clear()
 
@@ -572,16 +591,16 @@ def draw_header(scr, st, col, w, loading, fetched):
 
 
 def row_cells(st, runs, w):
-    """Column layout: list of (key, width) between the glyph and the time columns."""
+    """Column layout: list of (key, width) between the glyph and the time column."""
     if w < 50:
-        return [("text", max(0, w - 2 - 7))], False
+        return [("text", max(0, w - 2 - 7))]
     show_repo = st.scope == "global"
     w_repo = (14 if w >= 80 else 11) if show_repo else 0
     w_wf = min(18 if w >= 80 else 14, max((len(r.get("name") or "") for _, r in runs), default=8))
     w_br = min(20, max((len(r.get("head_branch") or "") for _, r in runs), default=6)) if w >= 64 else 0
     fixed = 2 + sum(c + 1 for c in (w_repo, w_wf, w_br) if c) + 6 + 1
     cells = [("repo", w_repo), ("wf", w_wf), ("branch", w_br), ("title", max(0, w - fixed))]
-    return [c for c in cells if c[1]], True
+    return [c for c in cells if c[1]]
 
 
 def draw(scr, st, col, offset):
@@ -619,7 +638,7 @@ def draw(scr, st, col, offset):
     elif idx >= offset + body_h:
         offset = idx - body_h + 1
 
-    cells, _ = row_cells(st, runs, w)
+    cells = row_cells(st, runs, w)
     # Narrow rows show the commit title; add the workflow name when titles repeat.
     title_count = {}
     for _, r in runs:
@@ -861,10 +880,7 @@ def main():
         pass
     except Exception:
         # Plugin panes close as soon as the process exits, so leave a trace.
-        import traceback
-        state = os.environ.get("HERDR_PLUGIN_STATE_DIR") or PLUGIN_ROOT
-        with open(os.path.join(state, "crash.log"), "a") as f:
-            f.write(f"--- {datetime.now().isoformat()}\n{traceback.format_exc()}")
+        log_crash()
         raise
 
 
