@@ -15,7 +15,7 @@
 
 <img src="assets/pane.svg" alt="The gh-runs pane listing workflow runs" align="right" width="320">
 
-## What it does
+### What it does
 
 - Lists the runs you triggered, using your `gh` login
 - Follows the repo of the pane you're working in
