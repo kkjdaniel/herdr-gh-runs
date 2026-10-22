@@ -13,9 +13,11 @@
 
 ---
 
-<img src="assets/pane.svg" alt="The gh-runs pane listing workflow runs" align="right" width="320">
-
 ### What it does
+
+<p align="center">
+  <img src="assets/pane.svg" alt="The gh-runs pane listing workflow runs" width="320">
+</p>
 
 - Lists the runs you triggered, using your `gh` login
 - Follows the repo of the pane you're working in
@@ -23,8 +25,6 @@
 - Docks under [herdr-sidebar](https://github.com/alexarthurs/herdr-sidebar) if you use it
 - Notifies you when one of your runs finishes
 - Lets you watch, rerun or cancel a run, or open it on GitHub
-
-<br clear="right">
 
 ## Log viewer
 
