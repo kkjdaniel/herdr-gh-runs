@@ -38,7 +38,11 @@ FAILED = {"failure", "timed_out", "startup_failure"}
 
 
 class CmdError(Exception):
-    pass
+    """A command failed. str() is its first output line; .output is all of it."""
+
+    def __init__(self, message, output=""):
+        super().__init__(message)
+        self.output = output or message
 
 
 def run(args, cwd=None, timeout=20):
@@ -47,8 +51,10 @@ def run(args, cwd=None, timeout=20):
     except (OSError, subprocess.TimeoutExpired) as e:
         raise CmdError(str(e))
     if p.returncode != 0:
-        lines = (p.stderr or p.stdout).strip().splitlines()
-        raise CmdError(lines[-1] if lines else f"{args[0]} exited {p.returncode}")
+        output = (p.stderr or p.stdout).strip()
+        # The first line carries the error (gh prints usage text after it).
+        lines = [ln for ln in output.splitlines() if ln.strip()]
+        raise CmdError(lines[0] if lines else f"{args[0]} exited {p.returncode}", output)
     return p.stdout
 
 
@@ -85,7 +91,8 @@ def pane_cwd(p):
     return p.get("foreground_cwd") or p.get("cwd")
 
 
-_repo_cache = {}
+_repo_cache = {}  # cwd -> (repo or None, time looked up)
+NO_REPO_TTL = 30  # recheck folders without a GitHub remote after this long
 
 
 def repo_for(cwd):
@@ -96,8 +103,9 @@ def repo_for(cwd):
     """
     if not cwd or os.path.realpath(cwd) == PLUGIN_ROOT:
         return None
-    if cwd in _repo_cache:
-        return _repo_cache[cwd]
+    cached = _repo_cache.get(cwd)
+    if cached and (cached[0] or time.time() - cached[1] < NO_REPO_TTL):
+        return cached[0]
     repo = None
     try:
         remotes = run(["git", "-C", cwd, "remote"]).split()
@@ -109,13 +117,24 @@ def repo_for(cwd):
                 repo = f"{m.group(1)}/{m.group(2)}"
     except CmdError:
         pass
-    _repo_cache[cwd] = repo
+    _repo_cache[cwd] = (repo, time.time())
     return repo
 
 
-def pick_target(prev):
+ME_TTL = 10  # seconds to reuse our own pane info (it changes only if the pane moves)
+
+
+def my_pane(st):
+    if not st.my_pane or time.time() - st.my_pane_at > ME_TTL:
+        st.my_pane = current_pane() or st.my_pane
+        st.my_pane_at = time.time()
+    return st.my_pane
+
+
+def pick_target(prev, me=None):
     """(repo, cwd) to show: the focused pane's repo, else keep the previous one."""
-    me = current_pane()
+    if me is None:
+        me = current_pane()
     my_id = me and me.get("pane_id")
     panes = [p for p in list_panes(me and me.get("workspace_id")) if p.get("pane_id") != my_id]
     focused = next((p for p in panes if p.get("focused")), None)
@@ -222,6 +241,7 @@ class State:
         self.confirm = None  # (prompt, callable)
         self.help = False
         self.my_pane = None
+        self.my_pane_at = 0
 
     def flash(self, text, secs=4):
         with self.lock:
@@ -253,10 +273,9 @@ def notify(login, repo, r):
 
 def tag_pane(st, summary):
     """Mark our pane so --toggle can find it, and show a short summary title."""
-    pane = current_pane()
+    pane = my_pane(st)
     if not pane:
         return
-    st.my_pane = pane
     try:
         run([HERDR, "pane", "report-metadata", pane["pane_id"], "--source", PLUGIN_ID,
              "--token", f"{TOKEN}=1", "--title", summary])
@@ -272,11 +291,13 @@ def refresh(st):
             st.login = gh_api("user")["login"]
             st.login_at = time.time()
         login = st.login
-        if st.scope == "repo":
-            if not st.target:
+        key = st.key()
+        scope, mine, target = st.scope, st.mine, st.target
+        if scope == "repo":
+            if not target:
                 raise CmdError("no GitHub repo found in this workspace's panes")
-            repo = st.target[0]
-            runs = [(repo, r) for r in fetch_runs(repo, login, st.mine, 30)]
+            repo = target[0]
+            runs = [(repo, r) for r in fetch_runs(repo, login, mine, 30)]
         else:
             if not st.repos or time.time() - st.repos_at > REPO_LIST_TTL:
                 st.repos = recent_repos(login)
@@ -284,7 +305,7 @@ def refresh(st):
 
             def one(repo):
                 try:
-                    return [(repo, r) for r in fetch_runs(repo, login, st.mine, 10)]
+                    return [(repo, r) for r in fetch_runs(repo, login, mine, 10)]
                 except (CmdError, ValueError):
                     return []
 
@@ -299,11 +320,13 @@ def refresh(st):
                 notify(login, repo, r)
             st.seen[r["id"]] = r.get("status")
 
+        if st.key() != key:
+            return  # filter/scope/repo changed mid-fetch; the worker refetches
         with st.lock:
             st.runs = runs
             st.error = None
             st.fetched_at = time.time()
-            st.fetched_key = st.key()
+            st.fetched_key = key
 
         active = sum(1 for _, r in runs if is_active(r))
         tag_pane(st, "GH Actions" + (f" · {active} running" if active else ""))
@@ -311,7 +334,7 @@ def refresh(st):
         with st.lock:
             st.error = str(e)
             st.fetched_at = time.time()
-            st.fetched_key = st.key()
+            st.fetched_key = st.key()  # retry on the normal interval
     finally:
         with st.lock:
             st.loading = False
@@ -320,7 +343,7 @@ def refresh(st):
 def worker(st):
     while not st.quit:
         if st.scope == "repo" and not st.pinned:
-            st.target = pick_target(st.target)
+            st.target = pick_target(st.target, my_pane(st))
         stale = time.time() - st.fetched_at >= st.interval()
         if st.key() != st.fetched_key or stale:
             refresh(st)
@@ -381,10 +404,8 @@ def action_browser(st):
         st.flash(str(e))
 
 
-def action_gh(st, verb, extra, done_msg):
-    sel = selected(st)
-    if not sel:
-        return
+def action_gh(st, sel, verb, extra, done_msg):
+    """Run `gh run <verb>` on the run captured when the prompt was shown."""
     repo, r = sel
 
     def go():
@@ -410,7 +431,7 @@ def ask_rerun(st):
     failed_only = r.get("conclusion") in FAILED
     what = "failed jobs of" if failed_only else "all jobs of"
     st.confirm = (f"Rerun {what} {r.get('name')} #{r.get('run_number')}? y/n",
-                  lambda: action_gh(st, "rerun", ["--failed"] if failed_only else [],
+                  lambda: action_gh(st, sel, "rerun", ["--failed"] if failed_only else [],
                                     "rerun requested"))
 
 
@@ -423,7 +444,7 @@ def ask_cancel(st):
         st.flash("run already finished")
         return
     st.confirm = (f"Cancel {r.get('name')} #{r.get('run_number')}? y/n",
-                  lambda: action_gh(st, "cancel", [], "cancel requested"))
+                  lambda: action_gh(st, sel, "cancel", [], "cancel requested"))
 
 
 # ---------------------------------------------------------------- drawing
@@ -717,9 +738,12 @@ def ui(scr):
             st.flash("all your recent repos" if st.scope == "global" else "following focused repo", 2)
             st.wake.set()
         elif ch == ord("p"):
-            st.pinned = not st.pinned
-            st.flash(f"pinned to {st.target[0]}" if st.pinned and st.target else "following focused pane", 2)
-            st.wake.set()
+            if not st.pinned and not st.target:
+                st.flash("no repo to pin yet", 2)
+            else:
+                st.pinned = not st.pinned
+                st.flash(f"pinned to {st.target[0]}" if st.pinned else "following focused pane", 2)
+                st.wake.set()
         elif ch == ord("?"):
             st.help = True
         elif ch == ord("r"):
@@ -750,7 +774,9 @@ def toggle():
         try:
             run([HERDR, "plugin", "pane", verb, p["pane_id"]])
             return
-        except CmdError:
+        except CmdError as e:
+            if "plugin_pane_not_found" not in e.output:
+                raise
             # After a plugin update/relink herdr no longer counts an already
             # open pane as ours. Close it as a plain pane; if the user wanted
             # it focused, open a fresh one (running the updated code) below.
@@ -770,7 +796,10 @@ def toggle():
     cwd = ctx.get("focused_pane_cwd") or ctx.get("workspace_cwd")
     if cwd:
         args += ["--cwd", cwd]
-    pane_id = herdr(*args)["result"]["plugin_pane"]["pane"]["pane_id"]
+    try:
+        pane_id = herdr(*args)["result"]["plugin_pane"]["pane"]["pane_id"]
+    except (KeyError, TypeError):
+        raise CmdError("herdr opened the pane but didn't report its id")
     # Tag now so a quick second toggle finds it before the UI's first refresh.
     run([HERDR, "pane", "report-metadata", pane_id, "--source", PLUGIN_ID,
          "--token", f"{TOKEN}=1"])
@@ -793,9 +822,14 @@ def find_sidebar(panes):
 def shrink_to(pane_id, rows):
     """Move the divider above our pane down until the pane is about `rows` tall."""
     for _ in range(4):  # each resize moves the divider by at most 0.5
-        layout = herdr("pane", "layout", "--pane", pane_id)["result"]["layout"]
-        mine = next(p["rect"] for p in layout["panes"] if p["pane_id"] == pane_id)
-        parent = [s["rect"] for s in layout["splits"]
+        try:
+            layout = herdr("pane", "layout", "--pane", pane_id)["result"]["layout"]
+        except (CmdError, KeyError, TypeError):
+            return
+        mine = next((p["rect"] for p in layout.get("panes", []) if p["pane_id"] == pane_id), None)
+        if not mine:
+            return
+        parent = [s["rect"] for s in layout.get("splits", [])
                   if s["direction"] == "down"
                   and s["rect"]["x"] == mine["x"] and s["rect"]["width"] == mine["width"]
                   and s["rect"]["y"] + s["rect"]["height"] == mine["y"] + mine["height"]]
@@ -813,7 +847,7 @@ def main():
     if "--toggle" in sys.argv[1:]:
         try:
             toggle()
-        except CmdError as e:
+        except (CmdError, KeyError, TypeError, ValueError) as e:
             print(f"gh-runs: {e}", file=sys.stderr)
             sys.exit(1)
         return

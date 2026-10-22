@@ -254,10 +254,17 @@ class Viewer:
     def load_jobs(self):
         try:
             self.run = gh_api(f"repos/{self.repo}/actions/runs/{self.run_id}")
-            jobs = gh_api(f"repos/{self.repo}/actions/runs/{self.run_id}/jobs?per_page=100")["jobs"]
+            jobs = []
+            for page in range(1, 11):  # up to 1000 jobs
+                data = gh_api(f"repos/{self.repo}/actions/runs/{self.run_id}/jobs"
+                              f"?per_page=100&page={page}")
+                jobs += data["jobs"]
+                if len(data["jobs"]) < 100 or len(jobs) >= data.get("total_count", 0):
+                    break
         except (CmdError, ValueError, KeyError) as e:
             self.error = str(e)
             return
+        self.error = None
         self.jobs = jobs
         self.items = []
         for job in jobs:
@@ -293,7 +300,7 @@ class Viewer:
                 try:
                     raw = run(["gh", "api", "--allow-escape-sequences", path], timeout=90)
                 except CmdError as e:
-                    if "unknown flag" not in str(e):
+                    if "unknown flag" not in e.output:
                         raise
                     raw = run(["gh", "api", path], timeout=90)  # older gh
                 result = parse_job_log(raw)
